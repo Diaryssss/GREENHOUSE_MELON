@@ -308,6 +308,7 @@ header {
     background: #2e7d32;
     color: white;
     border: none;
+    cursor: pointer;
     padding: 10px;
     border-radius: 10px;
     font-weight: bold;
