@@ -581,7 +581,7 @@ function updateGreenhouseData(greenhouse, data) {
     const prefix = greenhouse === 'gh1' ? 'gh1' : 'gh2';
     const temp = data.temperature || 0;
     const hum = data.humidity || 0;
-    const light = data.light_intensity || 0;
+    const light = data.light_intensity_lux || data.light_intensity || data.light || 0.0;  // ← Perbaik
     const isSunny = data.is_sunny || false;
     
     const tempEl = document.getElementById(`${prefix}Temp`);
