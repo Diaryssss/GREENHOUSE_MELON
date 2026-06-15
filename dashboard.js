@@ -695,14 +695,30 @@ function updateUIFromConfigData(data) {
 
     // Target EC
     if (data.target_ec !== undefined) {
-        document.getElementById('targetEC').value = data.target_ec;
-        saveTargetEC(data.target_ec);
+        const targetECInput = document.getElementById('targetEC');
+        if (targetECInput) {
+            targetECInput.value = data.target_ec;
+            saveTargetEC(data.target_ec);
+        }
     }
 
-    // Volume per plant
+    // Volume per plant (untuk watering)
     if (data.volume_per_plant !== undefined) {
-        document.getElementById('waterPlantVolume').value = data.volume_per_plant;
-        saveWaterVolume(data.volume_per_plant);
+        const waterVolumeInput = document.getElementById('waterPlantVolume');
+        if (waterVolumeInput) {
+            waterVolumeInput.value = data.volume_per_plant;
+            saveWaterVolume(data.volume_per_plant);
+        }
+    }
+
+    // ★★★ TAMBAHKAN INI - Update MIX VOLUME di manual control ★★★
+    if (data.mix_volume !== undefined) {
+        const mixVolumeInput = document.getElementById('mixVolume');
+        if (mixVolumeInput) {
+            mixVolumeInput.value = data.mix_volume;
+            saveMixVolume(data.mix_volume);
+        }
+        console.log(`🔄 Mix volume updated from ESP32: ${data.mix_volume} L`);
     }
 
     // Planting date & time
