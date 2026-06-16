@@ -888,35 +888,6 @@ function initEventListeners() {
     if (btn1) btn1.addEventListener('click', () => setGhMode(1));
     if (btn2) btn2.addEventListener('click', () => setGhMode(2));
     
-    // Tombol Simpan Konfigurasi Control
-    const saveControlBtn = document.getElementById('saveControlConfigBtn');
-    if (saveControlBtn) {
-        saveControlBtn.addEventListener('click', saveControlConfiguration);
-    }
-    
-    // Auto-save with Enter key
-    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
-    controlInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveControlConfiguration();
-                }
-            });
-        }
-    });
-
-    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');
-        if (refreshScheduleBtn) {
-            refreshScheduleBtn.addEventListener('click', () => {
-                publishCommand('request_schedule', '');
-                addAlert('info', 'Meminta data jadwal dari ESP32...');
-            });
-        }
-
-
     // Mix Button
     const mixBtn = document.getElementById('mixBtn');
     if (mixBtn) {
@@ -977,24 +948,55 @@ function initEventListeners() {
         });
     }
     
-    // Input Saving
+    // Input Saving - HANYA SATU DEKLARASI UNTUK SETIAP VARIABEL
     const targetECInput = document.getElementById('targetEC');
     const mixVolumeInput = document.getElementById('mixVolume');
     const waterVolumeInput = document.getElementById('waterPlantVolume');
     const savePlantingBtn = document.getElementById('savePlantingBtn');
-    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');
+    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');  // <-- HANYA SATU
     const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const saveControlBtn = document.getElementById('saveControlConfigBtn');
     
     if (targetECInput) targetECInput.addEventListener('change', () => saveTargetEC(targetECInput.value));
     if (mixVolumeInput) mixVolumeInput.addEventListener('change', () => saveMixVolume(mixVolumeInput.value));
     if (waterVolumeInput) waterVolumeInput.addEventListener('change', () => saveWaterVolume(waterVolumeInput.value));
     if (savePlantingBtn) savePlantingBtn.addEventListener('click', sendPlantingDate);
-    if (refreshScheduleBtn) refreshScheduleBtn.addEventListener('click', () => publishCommand('request_data', 'schedule'));
+    
+    // Refresh Schedule - PERBAIKI COMMAND NYA
+    if (refreshScheduleBtn) {
+        refreshScheduleBtn.addEventListener('click', () => {
+            publishCommand('request_schedule', '');  // <-- GANTI dari 'request_data' ke 'request_schedule'
+            addAlert('info', 'Meminta data jadwal dari ESP32...');
+        });
+    }
+    
+    // Save Config Button (Plant Config)
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             sendConfigToMQTT();
         });
     }
+    
+    // Save Control Config Button
+    if (saveControlBtn) {
+        saveControlBtn.addEventListener('click', saveControlConfiguration);
+    }
+    
+    // Auto-save with Enter key
+    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
+    controlInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (typeof saveControlConfiguration === 'function') {
+                        saveControlConfiguration();
+                    }
+                }
+            });
+        }
+    });
 }
 
 // ====================================================================
