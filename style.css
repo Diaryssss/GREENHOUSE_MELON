@@ -351,6 +351,84 @@ header {
     font-size: 16px;
 }
 
+/* Schedule Info */
+.schedule-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    margin-top: 10px;
+    border-top: 1px dashed #ddd;
+    font-size: 13px;
+    color: var(--gray);
+}
+
+.schedule-info i {
+    color: var(--primary);
+    font-size: 14px;
+}
+
+.schedule-info span {
+    color: var(--dark);
+    font-weight: 500;
+}
+
+/* Schedule item updated */
+.schedule-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.schedule-item:last-child {
+    border-bottom: none;
+}
+
+.schedule-time {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.schedule-time i {
+    color: var(--primary);
+    width: 20px;
+    font-size: 14px;
+}
+
+.schedule-time span {
+    font-size: 13px;
+    color: var(--gray);
+    min-width: 70px;
+}
+
+.schedule-time strong {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+    font-family: 'Courier New', monospace;
+    min-width: 50px;
+}
+
+.schedule-status {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.schedule-status.pending {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.schedule-status.executed {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
 /* Responsive untuk tombol */
 @media (max-width: 768px) {
     .btn-save-config-control {

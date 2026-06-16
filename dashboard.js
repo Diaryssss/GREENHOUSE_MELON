@@ -623,21 +623,57 @@ function updateECCorrection(data) {
     }
 }
 
+// ====================================================================
+// SCHEDULE FUNCTIONS
+// ====================================================================
+
 function updateSchedule(data) {
     const scheduleList = document.getElementById('scheduleList');
     if (!scheduleList) return;
     
-    if (!data.schedules || data.schedules.length === 0) {
-        scheduleList.innerHTML = '<div class="schedule-empty">Belum ada jadwal</div>';
+    // Jika tidak ada data jadwal
+    if (!data || !data.schedules || data.schedules.length === 0) {
+        scheduleList.innerHTML = `
+            <div class="schedule-item">
+                <div class="schedule-time">
+                    <i class="far fa-clock"></i>
+                    <span>Jadwal</span>
+                    <strong>--:--</strong>
+                </div>
+                <span class="schedule-status pending">Belum diatur</span>
+            </div>
+        `;
         return;
     }
     
     let html = '';
     data.schedules.forEach((schedule, index) => {
         const statusClass = schedule.executed ? 'executed' : 'pending';
-        const statusText = schedule.executed ? 'Executed' : 'Pending';
-        html += `<div class="schedule-item"><div class="schedule-time"><i class="far fa-clock"></i><span>Jadwal ${index + 1}</span><strong>${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}</strong></div><span class="schedule-status ${statusClass}">${statusText}</span></div>`;
+        const statusText = schedule.executed ? '✅ Sudah' : '⏳ Menunggu';
+        const hourStr = String(schedule.hour).padStart(2, '0');
+        const minuteStr = String(schedule.minute).padStart(2, '0');
+        
+        html += `
+            <div class="schedule-item">
+                <div class="schedule-time">
+                    <i class="far fa-clock"></i>
+                    <span>Jadwal ${index + 1}</span>
+                    <strong>${hourStr}:${minuteStr}</strong>
+                </div>
+                <span class="schedule-status ${statusClass}">${statusText}</span>
+            </div>
+        `;
     });
+    
+    // Tambahkan informasi fase
+    if (data.phase) {
+        html += `
+            <div class="schedule-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Fase ${data.phase} - ${data.watering_per_day || 0}x penyiraman/hari</span>
+            </div>
+        `;
+    }
     
     scheduleList.innerHTML = html;
 }
@@ -760,6 +796,8 @@ function handleMessage(topic, message) {
             updatePlantingDateFromMQTT(data);
         } else if (topic === MQTT_CONFIG.topics.configStatus) {
             updateUIFromConfigData(data);
+        } else if (topic === MQTT_CONFIG.topics.scheduleUpdate) {
+            updateSchedule(data);  // <-- Handle schedule update
         }
         
                 else if (topic === 'RizkinK_1234/melon/control/config_response') {
@@ -869,6 +907,14 @@ function initEventListeners() {
             });
         }
     });
+
+    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');
+        if (refreshScheduleBtn) {
+            refreshScheduleBtn.addEventListener('click', () => {
+                publishCommand('request_schedule', '');
+                addAlert('info', 'Meminta data jadwal dari ESP32...');
+            });
+        }
 
 
     // Mix Button
