@@ -762,6 +762,14 @@ function handleMessage(topic, message) {
             updateUIFromConfigData(data);
         }
         
+                else if (topic === 'RizkinK_1234/melon/control/config_response') {
+            if (data.status === 'success') {
+                addAlert('success', '✅ Konfigurasi berhasil diterapkan di ESP32');
+            } else {
+                addAlert('danger', '❌ Konfigurasi gagal: ' + (data.message || 'Unknown error'));
+            }
+        }
+
         const lastUpdate = document.getElementById('lastUpdate');
         if (lastUpdate) lastUpdate.textContent = new Date().toLocaleTimeString('id-ID');
         
@@ -842,6 +850,27 @@ function initEventListeners() {
     if (btn1) btn1.addEventListener('click', () => setGhMode(1));
     if (btn2) btn2.addEventListener('click', () => setGhMode(2));
     
+        // Tombol Simpan Konfigurasi Control
+    const saveControlBtn = document.getElementById('saveControlConfigBtn');
+    if (saveControlBtn) {
+        saveControlBtn.addEventListener('click', saveControlConfiguration);
+    }
+    
+    // Auto-save when Enter key pressed on inputs
+    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
+    controlInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveControlConfiguration();
+                }
+            });
+        }
+    });
+
+
     // Mix Button
     const mixBtn = document.getElementById('mixBtn');
     if (mixBtn) {
@@ -921,6 +950,76 @@ function initEventListeners() {
         });
     }
 }
+
+// ====================================================================
+// SAVE CONTROL CONFIGURATION
+// ====================================================================
+
+function saveControlConfiguration() {
+    if (!mqttClient || !mqttClient.connected) {
+        addAlert('danger', 'Tidak terhubung ke MQTT broker!');
+        return;
+    }
+    
+    // Ambil nilai dari input
+    const targetEC = parseFloat(document.getElementById('targetEC')?.value);
+    const mixVolume = parseFloat(document.getElementById('mixVolume')?.value);
+    const waterVolume = parseFloat(document.getElementById('waterPlantVolume')?.value);
+    
+    // Validasi
+    if (isNaN(targetEC) || targetEC <= 0) {
+        addAlert('danger', 'Target EC tidak valid! Minimal 0.1');
+        return;
+    }
+    if (isNaN(mixVolume) || mixVolume <= 0) {
+        addAlert('danger', 'Volume mix tidak valid! Minimal 1 L');
+        return;
+    }
+    if (isNaN(waterVolume) || waterVolume <= 0) {
+        addAlert('danger', 'Volume/plant tidak valid! Minimal 50 ml');
+        return;
+    }
+    
+    // Kirim ke ESP32 via MQTT
+    const payload = {
+        target_ec: targetEC,
+        mix_volume: mixVolume,
+        volume_per_plant: waterVolume,
+        timestamp: Date.now()
+    };
+    
+    mqttClient.publish('RizkinK_1234/melon/control/update_config', JSON.stringify(payload), (err) => {
+        if (err) {
+            console.error('Publish error:', err);
+            addAlert('danger', 'Gagal mengirim konfigurasi ke ESP32');
+        } else {
+            // Simpan ke localStorage
+            saveTargetEC(targetEC);
+            saveMixVolume(mixVolume);
+            saveWaterVolume(waterVolume);
+            
+            addAlert('success', `✅ Konfigurasi disimpan: EC=${targetEC}, Mix=${mixVolume}L, Water=${waterVolume}ml`);
+            
+            // Tampilkan notifikasi sukses di tombol
+            const btn = document.getElementById('saveControlConfigBtn');
+            if (btn) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Tersimpan!';
+                btn.style.background = 'linear-gradient(135deg, #4caf50, #388e3c)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.background = '';
+                }, 2000);
+            }
+        }
+    });
+}
+
+// ====================================================================
+// UPDATE EVENT LISTENERS
+// ====================================================================
+
+
 
 // ====================================================================
 // INITIALIZATION

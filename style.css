@@ -320,6 +320,50 @@ header {
     transform: translateY(-2px);
 }
 
+/* Control Panel - Tambahan untuk tombol simpan */
+.btn-save-config-control {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-save-config-control:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+    filter: brightness(1.05);
+}
+
+.btn-save-config-control:active {
+    transform: translateY(0px);
+}
+
+.btn-save-config-control i {
+    font-size: 16px;
+}
+
+/* Responsive untuk tombol */
+@media (max-width: 768px) {
+    .btn-save-config-control {
+        width: 100%;
+        justify-content: center;
+        padding: 12px;
+    }
+    
+    .control-config {
+        gap: 10px;
+    }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .planting-display {
