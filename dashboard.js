@@ -364,7 +364,7 @@ function sendConfigToMQTT() {
         addAlert('danger', 'Tidak terhubung ke MQTT broker!');
         return;
     }
-    console.log('sendConfigToMQTT called');
+    console.log('📤 sendConfigToMQTT called');
     
     const payload = {
         gh1_plants: parseInt(document.getElementById('plantCountGH1')?.value) || 336,
@@ -372,18 +372,18 @@ function sendConfigToMQTT() {
         nutrient_a_conc: parseFloat(document.getElementById('nutrientAConc')?.value) || 100,
         nutrient_b_conc: parseFloat(document.getElementById('nutrientBConc')?.value) || 100,
         ppm_factor: parseInt(document.getElementById('ppmFactor')?.value) || 500,
-        tank_capacity: parseFloat(document.getElementById('tankCapacity')?.value) || 200,
-        // timestamp: Date.now()
-        // console.log('Values:', {gh1, gh2, nutA, nutB, ppm, tank});
+        tank_capacity: parseFloat(document.getElementById('tankCapacity')?.value) || 200
     };
-    console.log('Values:', payload);
+    console.log('📦 Payload:', payload);
     
+    // Kirim ke topic parameters
     mqttClient.publish(MQTT_CONFIG.topics.configParams, JSON.stringify(payload), (err) => {
         if (err) {
-            console.error('Publish error:', err);
+            console.error('❌ Publish error:', err);
             addAlert('danger', 'Gagal mengirim konfigurasi');
         } else {
-            addAlert('success', 'Konfigurasi terkirim ke ESP32');
+            console.log('✅ Config sent successfully');
+            addAlert('success', '✅ Konfigurasi terkirim ke ESP32');
         }
     });
     saveConfigToLocalStorage();
@@ -850,13 +850,13 @@ function initEventListeners() {
     if (btn1) btn1.addEventListener('click', () => setGhMode(1));
     if (btn2) btn2.addEventListener('click', () => setGhMode(2));
     
-        // Tombol Simpan Konfigurasi Control
+    // Tombol Simpan Konfigurasi Control
     const saveControlBtn = document.getElementById('saveControlConfigBtn');
     if (saveControlBtn) {
         saveControlBtn.addEventListener('click', saveControlConfiguration);
     }
     
-    // Auto-save when Enter key pressed on inputs
+    // Auto-save with Enter key
     const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
     controlInputs.forEach(id => {
         const input = document.getElementById(id);
@@ -955,6 +955,10 @@ function initEventListeners() {
 // SAVE CONTROL CONFIGURATION
 // ====================================================================
 
+// ====================================================================
+// SAVE CONTROL CONFIGURATION - Update
+// ====================================================================
+
 function saveControlConfiguration() {
     if (!mqttClient || !mqttClient.connected) {
         addAlert('danger', 'Tidak terhubung ke MQTT broker!');
@@ -980,7 +984,6 @@ function saveControlConfiguration() {
         return;
     }
     
-    // Kirim ke ESP32 via MQTT
     const payload = {
         target_ec: targetEC,
         mix_volume: mixVolume,
@@ -988,11 +991,16 @@ function saveControlConfiguration() {
         timestamp: Date.now()
     };
     
+    console.log('📤 Sending control config:', payload);
+    
+    // Kirim ke topic update_config
     mqttClient.publish('RizkinK_1234/melon/control/update_config', JSON.stringify(payload), (err) => {
         if (err) {
-            console.error('Publish error:', err);
+            console.error('❌ Publish error:', err);
             addAlert('danger', 'Gagal mengirim konfigurasi ke ESP32');
         } else {
+            console.log('✅ Control config sent successfully');
+            
             // Simpan ke localStorage
             saveTargetEC(targetEC);
             saveMixVolume(mixVolume);
