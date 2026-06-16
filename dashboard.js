@@ -364,7 +364,7 @@ function sendConfigToMQTT() {
         addAlert('danger', 'Tidak terhubung ke MQTT broker!');
         return;
     }
-    console.log('📤 sendConfigToMQTT called');
+    console.log('sendConfigToMQTT called');
     
     const payload = {
         gh1_plants: parseInt(document.getElementById('plantCountGH1')?.value) || 336,
@@ -372,18 +372,18 @@ function sendConfigToMQTT() {
         nutrient_a_conc: parseFloat(document.getElementById('nutrientAConc')?.value) || 100,
         nutrient_b_conc: parseFloat(document.getElementById('nutrientBConc')?.value) || 100,
         ppm_factor: parseInt(document.getElementById('ppmFactor')?.value) || 500,
-        tank_capacity: parseFloat(document.getElementById('tankCapacity')?.value) || 200
+        tank_capacity: parseFloat(document.getElementById('tankCapacity')?.value) || 200,
+        // timestamp: Date.now()
+        // console.log('Values:', {gh1, gh2, nutA, nutB, ppm, tank});
     };
-    console.log('📦 Payload:', payload);
+    console.log('Values:', payload);
     
-    // Kirim ke topic parameters
     mqttClient.publish(MQTT_CONFIG.topics.configParams, JSON.stringify(payload), (err) => {
         if (err) {
-            console.error('❌ Publish error:', err);
+            console.error('Publish error:', err);
             addAlert('danger', 'Gagal mengirim konfigurasi');
         } else {
-            console.log('✅ Config sent successfully');
-            addAlert('success', '✅ Konfigurasi terkirim ke ESP32');
+            addAlert('success', 'Konfigurasi terkirim ke ESP32');
         }
     });
     saveConfigToLocalStorage();
@@ -623,57 +623,21 @@ function updateECCorrection(data) {
     }
 }
 
-// ====================================================================
-// SCHEDULE FUNCTIONS
-// ====================================================================
-
 function updateSchedule(data) {
     const scheduleList = document.getElementById('scheduleList');
     if (!scheduleList) return;
     
-    // Jika tidak ada data jadwal
-    if (!data || !data.schedules || data.schedules.length === 0) {
-        scheduleList.innerHTML = `
-            <div class="schedule-item">
-                <div class="schedule-time">
-                    <i class="far fa-clock"></i>
-                    <span>Jadwal</span>
-                    <strong>--:--</strong>
-                </div>
-                <span class="schedule-status pending">Belum diatur</span>
-            </div>
-        `;
+    if (!data.schedules || data.schedules.length === 0) {
+        scheduleList.innerHTML = '<div class="schedule-empty">Belum ada jadwal</div>';
         return;
     }
     
     let html = '';
     data.schedules.forEach((schedule, index) => {
         const statusClass = schedule.executed ? 'executed' : 'pending';
-        const statusText = schedule.executed ? '✅ Sudah' : '⏳ Menunggu';
-        const hourStr = String(schedule.hour).padStart(2, '0');
-        const minuteStr = String(schedule.minute).padStart(2, '0');
-        
-        html += `
-            <div class="schedule-item">
-                <div class="schedule-time">
-                    <i class="far fa-clock"></i>
-                    <span>Jadwal ${index + 1}</span>
-                    <strong>${hourStr}:${minuteStr}</strong>
-                </div>
-                <span class="schedule-status ${statusClass}">${statusText}</span>
-            </div>
-        `;
+        const statusText = schedule.executed ? 'Executed' : 'Pending';
+        html += `<div class="schedule-item"><div class="schedule-time"><i class="far fa-clock"></i><span>Jadwal ${index + 1}</span><strong>${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}</strong></div><span class="schedule-status ${statusClass}">${statusText}</span></div>`;
     });
-    
-    // Tambahkan informasi fase
-    if (data.phase) {
-        html += `
-            <div class="schedule-info">
-                <i class="fas fa-info-circle"></i>
-                <span>Fase ${data.phase} - ${data.watering_per_day || 0}x penyiraman/hari</span>
-            </div>
-        `;
-    }
     
     scheduleList.innerHTML = html;
 }
@@ -796,8 +760,6 @@ function handleMessage(topic, message) {
             updatePlantingDateFromMQTT(data);
         } else if (topic === MQTT_CONFIG.topics.configStatus) {
             updateUIFromConfigData(data);
-        } else if (topic === MQTT_CONFIG.topics.scheduleUpdate) {
-            updateSchedule(data);  // <-- Handle schedule update
         }
         
                 else if (topic === 'RizkinK_1234/melon/control/config_response') {
@@ -888,6 +850,27 @@ function initEventListeners() {
     if (btn1) btn1.addEventListener('click', () => setGhMode(1));
     if (btn2) btn2.addEventListener('click', () => setGhMode(2));
     
+        // Tombol Simpan Konfigurasi Control
+    const saveControlBtn = document.getElementById('saveControlConfigBtn');
+    if (saveControlBtn) {
+        saveControlBtn.addEventListener('click', saveControlConfiguration);
+    }
+    
+    // Auto-save when Enter key pressed on inputs
+    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
+    controlInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveControlConfiguration();
+                }
+            });
+        }
+    });
+
+
     // Mix Button
     const mixBtn = document.getElementById('mixBtn');
     if (mixBtn) {
@@ -948,63 +931,28 @@ function initEventListeners() {
         });
     }
     
-    // Input Saving - HANYA SATU DEKLARASI UNTUK SETIAP VARIABEL
+    // Input Saving
     const targetECInput = document.getElementById('targetEC');
     const mixVolumeInput = document.getElementById('mixVolume');
     const waterVolumeInput = document.getElementById('waterPlantVolume');
     const savePlantingBtn = document.getElementById('savePlantingBtn');
-    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');  // <-- HANYA SATU
+    const refreshScheduleBtn = document.getElementById('refreshScheduleBtn');
     const saveConfigBtn = document.getElementById('saveConfigBtn');
-    const saveControlBtn = document.getElementById('saveControlConfigBtn');
     
     if (targetECInput) targetECInput.addEventListener('change', () => saveTargetEC(targetECInput.value));
     if (mixVolumeInput) mixVolumeInput.addEventListener('change', () => saveMixVolume(mixVolumeInput.value));
     if (waterVolumeInput) waterVolumeInput.addEventListener('change', () => saveWaterVolume(waterVolumeInput.value));
     if (savePlantingBtn) savePlantingBtn.addEventListener('click', sendPlantingDate);
-    
-    // Refresh Schedule - PERBAIKI COMMAND NYA
-    if (refreshScheduleBtn) {
-        refreshScheduleBtn.addEventListener('click', () => {
-            publishCommand('request_schedule', '');  // <-- GANTI dari 'request_data' ke 'request_schedule'
-            addAlert('info', 'Meminta data jadwal dari ESP32...');
-        });
-    }
-    
-    // Save Config Button (Plant Config)
+    if (refreshScheduleBtn) refreshScheduleBtn.addEventListener('click', () => publishCommand('request_data', 'schedule'));
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             sendConfigToMQTT();
         });
     }
-    
-    // Save Control Config Button
-    if (saveControlBtn) {
-        saveControlBtn.addEventListener('click', saveControlConfiguration);
-    }
-    
-    // Auto-save with Enter key
-    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
-    controlInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (typeof saveControlConfiguration === 'function') {
-                        saveControlConfiguration();
-                    }
-                }
-            });
-        }
-    });
 }
 
 // ====================================================================
 // SAVE CONTROL CONFIGURATION
-// ====================================================================
-
-// ====================================================================
-// SAVE CONTROL CONFIGURATION - Update
 // ====================================================================
 
 function saveControlConfiguration() {
@@ -1032,6 +980,7 @@ function saveControlConfiguration() {
         return;
     }
     
+    // Kirim ke ESP32 via MQTT
     const payload = {
         target_ec: targetEC,
         mix_volume: mixVolume,
@@ -1039,16 +988,11 @@ function saveControlConfiguration() {
         timestamp: Date.now()
     };
     
-    console.log('📤 Sending control config:', payload);
-    
-    // Kirim ke topic update_config
     mqttClient.publish('RizkinK_1234/melon/control/update_config', JSON.stringify(payload), (err) => {
         if (err) {
-            console.error('❌ Publish error:', err);
+            console.error('Publish error:', err);
             addAlert('danger', 'Gagal mengirim konfigurasi ke ESP32');
         } else {
-            console.log('✅ Control config sent successfully');
-            
             // Simpan ke localStorage
             saveTargetEC(targetEC);
             saveMixVolume(mixVolume);
