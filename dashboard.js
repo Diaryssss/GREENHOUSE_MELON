@@ -36,19 +36,6 @@ const STORAGE_KEYS = {
     WATER_VOLUME: 'melon_water_volume'
 };
 
-// ====================================================================
-// GLOBAL VARIABLES
-// ====================================================================
-let mqttClient = null;
-let currentGhMode = 0;
-let currentPlantingDate = null;
-let lastData = {
-    master: null,
-    gh1: null,
-    gh2: null,
-    mixing: null,
-    waterLevel: null
-};
 
 // ====================================================================
 // GLOBAL VARIABLES
