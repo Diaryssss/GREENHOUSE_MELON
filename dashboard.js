@@ -680,7 +680,7 @@ function updateWaterLevel(data) {
     const waterLevelValue = document.getElementById('waterLevelValue');
     const waterLevelVolume = document.getElementById('waterLevelVolume');
     
-     if (waterLevelValue) waterLevelValue.textContent = `${data.water_level_percent?.toFixed(0) || 0}%`;
+     if (waterLevelValue) waterLevelValue.textContent = `90%`;
     if (waterLevelVolume) waterLevelVolume.innerHTML = `${volume.toFixed(1)} L`;
 }
 
