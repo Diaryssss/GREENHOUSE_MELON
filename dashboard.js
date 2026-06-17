@@ -674,7 +674,7 @@ function updateGreenhouseData(greenhouse, data) {
 }
 
 function updateWaterLevel(data) {
-    const levelPercent = data.water_level_percent || 0;
+    // const levelPercent = data.water_level_percent || 0;
     const volume = data.water_volume_liters || 0;
     
     const waterLevelValue = document.getElementById('waterLevelValue');
