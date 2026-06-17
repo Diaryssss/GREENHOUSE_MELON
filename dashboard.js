@@ -51,8 +51,90 @@ let lastData = {
 };
 
 // ====================================================================
+// GLOBAL VARIABLES
+// ====================================================================
+let mqttClient = null;
+let currentGhMode = 0;
+let currentPlantingDate = null;
+let lastData = {
+    master: null,
+    gh1: null,
+    gh2: null,
+    mixing: null,
+    waterLevel: null
+};
+
+// ===== TAMBAHKAN TOGGLE STATE =====
+let mixState = false;
+let waterBothState = false;
+let waterGh1State = false;
+let waterGh2State = false;
+
+// Timer untuk auto-off (30 detik)
+let mixTimer = null;
+let waterBothTimer = null;
+let waterGh1Timer = null;
+let waterGh2Timer = null;
+
+
+
+// ====================================================================
 // LOCALSTORAGE FUNCTIONS
 // ====================================================================
+
+// ====================================================================
+// TOGGLE BUTTONS - Manual Control
+// ====================================================================
+
+function toggleManualButton(btnId, stateVar, stateSetter, onClass, command, payload) {
+    const btn = document.getElementById(btnId);
+    const statusSpan = document.getElementById(btnId + 'Status');
+    const textSpan = document.getElementById(btnId + 'Text');
+    
+    // Toggle state
+    const newState = !stateVar;
+    stateSetter(newState);
+    
+    if (newState) {
+        // ===== ON =====
+        btn.classList.remove('btn-off');
+        btn.classList.add('btn-on', 'btn-pulsing', onClass);
+        statusSpan.textContent = '● ON';
+        statusSpan.className = 'btn-status-on';
+        
+        // Kirim perintah ON ke ESP32
+        publishCommand(command, payload || {});
+        addAlert('success', `🔌 ${textSpan.textContent} dinyalakan`);
+        
+        // Auto-off setelah 30 detik
+        const timerVar = btnId + 'Timer';
+        if (window[timerVar]) clearTimeout(window[timerVar]);
+        window[timerVar] = setTimeout(() => {
+            if (stateVar) {
+                toggleManualButton(btnId, stateVar, stateSetter, onClass, command + '_off', {});
+                addAlert('info', `⏸️ ${textSpan.textContent} mati otomatis (timeout)`);
+            }
+        }, 30000);
+        
+    } else {
+        // ===== OFF =====
+        btn.classList.remove('btn-on', 'btn-pulsing', onClass);
+        btn.classList.add('btn-off');
+        statusSpan.textContent = 'OFF';
+        statusSpan.className = 'btn-status-off';
+        
+        // Kirim perintah OFF ke ESP32
+        publishCommand(command + '_off', {});
+        addAlert('info', `⏸️ ${textSpan.textContent} dimatikan`);
+        
+        // Clear timer
+        const timerVar = btnId + 'Timer';
+        if (window[timerVar]) {
+            clearTimeout(window[timerVar]);
+            window[timerVar] = null;
+        }
+    }
+}
 function saveToLocalStorage(key, value) {
     try {
         localStorage.setItem(key, value);
@@ -850,75 +932,90 @@ function initEventListeners() {
     if (btn1) btn1.addEventListener('click', () => setGhMode(1));
     if (btn2) btn2.addEventListener('click', () => setGhMode(2));
     
-        // Tombol Simpan Konfigurasi Control
-    const saveControlBtn = document.getElementById('saveControlConfigBtn');
-    if (saveControlBtn) {
-        saveControlBtn.addEventListener('click', saveControlConfiguration);
-    }
-    
-    // Auto-save when Enter key pressed on inputs
-    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
-    controlInputs.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveControlConfiguration();
-                }
-            });
-        }
-    });
-
-
-    // Mix Button
+    // ===== MIX BUTTON - TOGGLE =====
     const mixBtn = document.getElementById('mixBtn');
     if (mixBtn) {
         mixBtn.addEventListener('click', () => {
-            const targetEC = parseFloat(document.getElementById('targetEC')?.value);
-            const volume = parseFloat(document.getElementById('mixVolume')?.value);
-            
-            if (isNaN(targetEC) || targetEC <= 0) {
-                addAlert('danger', 'Target EC tidak valid!');
-                return;
+            if (!mixState) {
+                // ON - minta parameter
+                const targetEC = parseFloat(document.getElementById('targetEC')?.value);
+                const volume = parseFloat(document.getElementById('mixVolume')?.value);
+                
+                if (isNaN(targetEC) || targetEC <= 0) {
+                    addAlert('danger', 'Target EC tidak valid!');
+                    return;
+                }
+                if (isNaN(volume) || volume <= 0) {
+                    addAlert('danger', 'Volume mixing tidak valid!');
+                    return;
+                }
+                
+                toggleManualButton('mixBtn', mixState, (val) => mixState = val, 'mix-btn-on', 'mix', { target_ec: targetEC, volume: volume });
+            } else {
+                // OFF
+                toggleManualButton('mixBtn', mixState, (val) => mixState = val, 'mix-btn-on', 'mix_off', {});
             }
-            if (isNaN(volume) || volume <= 0) {
-                addAlert('danger', 'Volume mixing tidak valid!');
-                return;
-            }
-            
-            publishCommand('mix', { target_ec: targetEC, volume: volume });
-            addAlert('info', `Mix: EC=${targetEC}, Volume=${volume}L`);
         });
     }
     
-    // Water Buttons
+    // ===== WATER BOTH - TOGGLE =====
     const waterBtn = document.getElementById('waterBtn');
-    const water1Btn = document.getElementById('water1Btn');
-    const water2Btn = document.getElementById('water2Btn');
-    
     if (waterBtn) {
         waterBtn.addEventListener('click', () => {
-            publishCommand('water', { greenhouse: 0, volume_per_plant: getWaterVolume() });
-            addAlert('info', `Watering kedua greenhouse: ${getWaterVolume()} ml/plant`);
+            if (!waterBothState) {
+                const volume = parseFloat(document.getElementById('waterPlantVolume')?.value);
+                
+                if (isNaN(volume) || volume <= 0) {
+                    addAlert('danger', 'Volume/plant tidak valid!');
+                    return;
+                }
+                
+                toggleManualButton('waterBtn', waterBothState, (val) => waterBothState = val, 'water-btn-on', 'water', { greenhouse: 0, volume_per_plant: volume });
+            } else {
+                toggleManualButton('waterBtn', waterBothState, (val) => waterBothState = val, 'water-btn-on', 'water_off', {});
+            }
         });
     }
     
+    // ===== WATER GH1 - TOGGLE =====
+    const water1Btn = document.getElementById('water1Btn');
     if (water1Btn) {
         water1Btn.addEventListener('click', () => {
-            publishCommand('water', { greenhouse: 1, volume_per_plant: getWaterVolume() });
-            addAlert('info', `Watering GH1: ${getWaterVolume()} ml/plant`);
+            if (!waterGh1State) {
+                const volume = parseFloat(document.getElementById('waterPlantVolume')?.value);
+                
+                if (isNaN(volume) || volume <= 0) {
+                    addAlert('danger', 'Volume/plant tidak valid!');
+                    return;
+                }
+                
+                toggleManualButton('water1Btn', waterGh1State, (val) => waterGh1State = val, 'water1-btn-on', 'water', { greenhouse: 1, volume_per_plant: volume });
+            } else {
+                toggleManualButton('water1Btn', waterGh1State, (val) => waterGh1State = val, 'water1-btn-on', 'water_off', {});
+            }
         });
     }
     
+    // ===== WATER GH2 - TOGGLE =====
+    const water2Btn = document.getElementById('water2Btn');
     if (water2Btn) {
         water2Btn.addEventListener('click', () => {
-            publishCommand('water', { greenhouse: 2, volume_per_plant: getWaterVolume() });
-            addAlert('info', `Watering GH2: ${getWaterVolume()} ml/plant`);
+            if (!waterGh2State) {
+                const volume = parseFloat(document.getElementById('waterPlantVolume')?.value);
+                
+                if (isNaN(volume) || volume <= 0) {
+                    addAlert('danger', 'Volume/plant tidak valid!');
+                    return;
+                }
+                
+                toggleManualButton('water2Btn', waterGh2State, (val) => waterGh2State = val, 'water2-btn-on', 'water', { greenhouse: 2, volume_per_plant: volume });
+            } else {
+                toggleManualButton('water2Btn', waterGh2State, (val) => waterGh2State = val, 'water2-btn-on', 'water_off', {});
+            }
         });
     }
     
-    // Auto Mode Toggle
+    // ===== AUTO MODE TOGGLE =====
     const autoToggle = document.getElementById('autoModeToggle');
     if (autoToggle) {
         autoToggle.addEventListener('change', (e) => {
@@ -931,7 +1028,7 @@ function initEventListeners() {
         });
     }
     
-    // Input Saving
+    // ===== INPUT SAVING =====
     const targetECInput = document.getElementById('targetEC');
     const mixVolumeInput = document.getElementById('mixVolume');
     const waterVolumeInput = document.getElementById('waterPlantVolume');
@@ -943,12 +1040,32 @@ function initEventListeners() {
     if (mixVolumeInput) mixVolumeInput.addEventListener('change', () => saveMixVolume(mixVolumeInput.value));
     if (waterVolumeInput) waterVolumeInput.addEventListener('change', () => saveWaterVolume(waterVolumeInput.value));
     if (savePlantingBtn) savePlantingBtn.addEventListener('click', sendPlantingDate);
-    if (refreshScheduleBtn) refreshScheduleBtn.addEventListener('click', () => publishCommand('request_data', 'schedule'));
+    if (refreshScheduleBtn) refreshScheduleBtn.addEventListener('click', () => publishCommand('request_schedule', ''));
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', () => {
             sendConfigToMQTT();
         });
     }
+    
+    // ===== SAVE CONTROL CONFIG =====
+    const saveControlBtn = document.getElementById('saveControlConfigBtn');
+    if (saveControlBtn) {
+        saveControlBtn.addEventListener('click', saveControlConfiguration);
+    }
+    
+    // ===== AUTO-SAVE WITH ENTER =====
+    const controlInputs = ['targetEC', 'mixVolume', 'waterPlantVolume'];
+    controlInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveControlConfiguration();
+                }
+            });
+        }
+    });
 }
 
 // ====================================================================
